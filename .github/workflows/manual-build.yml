@@ -9,7 +9,7 @@ on:
       version:
         description: 'mpv-android 版本'
         required: true
-        default: 'mpv-android-2023-02-27'
+        default: 'latest'
 
 jobs:
   check:
@@ -17,21 +17,26 @@ jobs:
     name: 手动编译 mpv-android libs ${{github.event.inputs.version}}
 
     steps:
-    - name: 获取最新 tag
-      id: getTag
+    - name: 获取 version
+      id: getVersion
       run: |
-        latestTag="$((curl -gs -H 'Content-Type: application/json' \
+        if [ ${{ github.event.inputs.version }} == "latest" ]
+        then
+          version="$((curl -gs -H 'Content-Type: application/json' \
           -H "Authorization: Bearer ${{ secrets.ACCESS_TOKEN }}" \
           -X POST -d '{ "query": "query {repository(owner: \"mpv-android\", name: \"mpv-android\") {refs(refPrefix: \"refs/tags/\", last: 4, orderBy: {field: TAG_COMMIT_DATE, direction: ASC}) {edges {node {name}}}}}"}' https://api.github.com/graphql) | jq -r '.data.repository.refs.edges[].node.name' | tail -n 1)"
-        echo "latestTag=${latestTag}" >> $GITHUB_OUTPUT
-        echo "最新tag: $latestTag"
+        else
+          version=${{ github.event.inputs.version }}
+        fi
+        echo "version=${version}" >> $GITHUB_OUTPUT
+        echo "最新tag: $version"
 
     - name: 触发编译
       uses: peter-evans/repository-dispatch@v2
       with:
         token: ${{ secrets.ACCESS_TOKEN }}
-        event-type: 编译 mpv-android libs ${{ github.event.inputs.version }}
-        client-payload: '{"version": "${{ github.event.inputs.version }}"}'
+        event-type: 编译 mpv-android libs ${{ steps.getVersion.outputs.version }}
+        client-payload: '{"version": "${{ steps.getVersion.outputs.version }}"}'
         
     - name: 删除旧的 workflows
       uses: Mattraks/delete-workflow-runs@v2
