@@ -23,13 +23,6 @@ jobs:
         java-version: '17'
         distribution: temurin
 
-    - name: 配置缓存
-      uses: actions/cache@v3
-      with:
-        path: gh-cache/
-        key: "prefix"
-        enableCrossOsArchive: true
-
     - name: 初始化环境
       run: |
         sudo apt-get update
@@ -42,12 +35,14 @@ jobs:
 
     - name: 下载依赖
       run: |
-        mpv-android/buildscripts/download.sh
+        cd mpv-android/buildscripts
+        ./download.sh
 
     - name: 编译
       id: compile
       run: |
-        mpv-android/buildscripts/buildall.sh
+        cd mpv-android/buildscripts
+        ./buildall.sh
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: SSH 连接
