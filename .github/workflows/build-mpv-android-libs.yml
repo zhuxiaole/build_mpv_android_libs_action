@@ -42,7 +42,10 @@ jobs:
       id: compile
       run: |
         cd mpv-android/buildscripts
-        ./buildall.sh
+        ./buildall.sh --arch armv7l mpv
+        ./buildall.sh --arch arm64 mpv
+        ./buildall.sh --arch x86 mpv
+        ./buildall.sh --arch x86_64 mpv
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: SSH 连接
