@@ -29,7 +29,7 @@ jobs:
           version=${{ github.event.inputs.version }}
         fi
         echo "version=${version}" >> $GITHUB_OUTPUT
-        echo "最新tag: $version"
+        echo "version: $version"
 
     - name: 触发编译
       uses: peter-evans/repository-dispatch@v2
