@@ -26,7 +26,7 @@ jobs:
     - name: 初始化环境
       run: |
         sudo apt-get update
-        sudo apt-get install autoconf pkg-config libtool ninja-build meson nasm
+        sudo apt-get install autoconf pkg-config libtool ninja-build meson nasm zip
       
     - name: 下载mpv-android源码
       run: |
@@ -46,20 +46,19 @@ jobs:
         ./buildall.sh --arch arm64 mpv
         ./buildall.sh --arch x86 mpv
         ./buildall.sh --arch x86_64 mpv
+        ./buildall.sh
         echo "status=success" >> $GITHUB_OUTPUT
-
-    - name: SSH 连接
-      uses: P3TERX/ssh2actions@main
-      env:
-        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
 
     - name: 组织文件
       id: organize
       if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
         mkdir uploads
-        cd mpv-android/app/build/outputs
+        cd mpv-android/app/build/intermediates/merged_jni_libs/defaultRelease/out
+        zip -r -v ${{ github.workspace }}/uploads/arm64-v8a.zip arm64-v8a
+        zip -r -v ${{ github.workspace }}/uploads/armeabi-v7a.zip armeabi-v7a
+        zip -r -v ${{ github.workspace }}/uploads/x86.zip x86
+        zip -r -v ${{ github.workspace }}/uploads/x86_64.zip x86_64
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: 生成 release tag
