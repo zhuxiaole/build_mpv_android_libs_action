@@ -23,7 +23,7 @@ jobs:
         latestTag="$((curl -gs -H 'Content-Type: application/json' \
           -H "Authorization: Bearer ${{ secrets.ACCESS_TOKEN }}" \
           -X POST -d '{ "query": "query {repository(owner: \"mpv-android\", name: \"mpv-android\") {refs(refPrefix: \"refs/tags/\", last: 4, orderBy: {field: TAG_COMMIT_DATE, direction: ASC}) {edges {node {name}}}}}"}' https://api.github.com/graphql) | jq -r '.data.repository.refs.edges[].node.name' | tail -n 1)"
-        echo "::set-output name=latestTag::${latestTag}"
+        echo "latestTag=${latestTag}" >> $GITHUB_OUTPUT
         echo "最新tag: $latestTag"
 
     - name: 触发编译

@@ -20,9 +20,8 @@ jobs:
         latestTag="$((curl -gs -H 'Content-Type: application/json' \
           -H "Authorization: Bearer ${{ secrets.ACCESS_TOKEN }}" \
           -X POST -d '{ "query": "query {repository(owner: \"x-wrt\", name: \"x-wrt\") {refs(refPrefix: \"refs/tags/\", last: 4, orderBy: {field: TAG_COMMIT_DATE, direction: ASC}) {edges {node {name}}}}}"}' https://api.github.com/graphql) | jq -r '.data.repository.refs.edges[].node.name' | grep '22.' | tail -n 1)"
-        latestTag="22.03"
-        echo "::set-output name=latestTag::${latestTag}"
-        echo "::set-output name=success::true"
+        echo "latestTag=${latestTag}" >> $GITHUB_OUTPUT
+        echo "success=true" >> $GITHUB_OUTPUT
         echo "latestTag: $latestTag"
 
     - name: Trigger x86_64 build

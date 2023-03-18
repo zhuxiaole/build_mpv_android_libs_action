@@ -1,4 +1,4 @@
-name: Build Openwrt
+name: Build mpv-android libs
 
 on:
   repository_dispatch:
@@ -51,10 +51,9 @@ jobs:
 
     - name: 编译
       id: compile
-      if: !cancelled()
       run: |
         /mpv-android/buildscripts/.travis.sh build
-        echo "::set-output name=status::success"
+        echo "status=success" >> $GITHUB_OUTPUT
 
     - name: SSH 连接
       uses: P3TERX/ssh2actions@v1.0.0
@@ -68,7 +67,7 @@ jobs:
       run: |
         mkdir /uploads
         cd /mpv-android/app/build/outputs
-        echo "::set-output name=status::success"
+        echo "status=success" >> $GITHUB_OUTPUT
 
     - name: 生成 release tag
       id: tag
@@ -76,11 +75,11 @@ jobs:
       run: |
         release_tag="${{matrix.version}}"
         release_name="${{matrix.version}} libs"
-        echo "::set-output name=release_tag::${release_tag}"
-        echo "::set-output name=release_name::${release_name}"
+        echo "release_tag=${release_tag}" >> $GITHUB_OUTPUT
+        echo "release_name=${release_name}" >> $GITHUB_OUTPUT
         touch /release.txt
         echo "mpv-android libs version ${{matrix.version}}" >> /release.txt
-        echo "::set-output name=status::success"
+        echo "status=success" >> $GITHUB_OUTPUT
         
     - name: 删除相同 tag 的 releases
       uses: dev-drprasad/delete-older-releases@v0.2.0
