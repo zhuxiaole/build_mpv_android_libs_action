@@ -11,28 +11,32 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-    name: Schedule Build
+    name: 自动编译
 
     steps:
-    - name: Get latest tag
-      id: getTag
+    - name: 检查是否需要更新
+      id: compareVersions
       run: |
-        latestTag="$((curl -gs -H 'Content-Type: application/json' \
+        mpv_version="$((curl -gs -H 'Content-Type: application/json' \
           -H "Authorization: Bearer ${{ secrets.ACCESS_TOKEN }}" \
-          -X POST -d '{ "query": "query {repository(owner: \"x-wrt\", name: \"x-wrt\") {refs(refPrefix: \"refs/tags/\", last: 4, orderBy: {field: TAG_COMMIT_DATE, direction: ASC}) {edges {node {name}}}}}"}' https://api.github.com/graphql) | jq -r '.data.repository.refs.edges[].node.name' | grep '22.' | tail -n 1)"
-        echo "latestTag=${latestTag}" >> $GITHUB_OUTPUT
-        echo "success=true" >> $GITHUB_OUTPUT
-        echo "latestTag: $latestTag"
+          -X POST -d '{ "query": "query {repository(owner: \"mpv-android\", name: \"mpv-android\") {refs(refPrefix: \"refs/tags/\", last: 4, orderBy: {field: TAG_COMMIT_DATE, direction: ASC}) {edges {node {name}}}}}"}' https://api.github.com/graphql) | jq -r '.data.repository.refs.edges[].node.name' | tail -n 1)"
+        my_version="$((curl -gs -H 'Content-Type: application/json' \
+          -H "Authorization: Bearer ${{ secrets.ACCESS_TOKEN }}" \
+          -X POST -d '{ "query": "query {repository(owner: \"zhuxiaole\", name: \"build_mpv_android_libs_action\") {refs(refPrefix: \"refs/tags/\", last: 4, orderBy: {field: TAG_COMMIT_DATE, direction: ASC}) {edges {node {name}}}}}"}' https://api.github.com/graphql) | jq -r '.data.repository.refs.edges[].node.name' | tail -n 1)"
+        update=${{ $mpv_version != $my_version }}
+        echo "version=${mpv_version}" >> $GITHUB_OUTPUT
+        echo "update=${update}" >> $GITHUB_OUTPUT
+        echo "是否更新: $update | 最新版本: $mpv_version"
 
-    - name: Trigger x86_64 build
-      if: steps.getTag.outputs.success == 'true'
+    - name: 触发编译
+      if: steps.compareVersions.outputs.update == 'true'
       uses: peter-evans/repository-dispatch@v2
       with:
         token: ${{ secrets.ACCESS_TOKEN }}
-        event-type: Lienol-Openwrt x86_64 ${{steps.getTag.outputs.latestTag}}
-        client-payload: '{"manufacturer": "Lienol-Openwrt", "branch": "${{ steps.getTag.outputs.latestTag }}", "target": "x86_64"}'
+        event-type: 自动编译 mpv-android libs ${{ steps.compareVersions.outputs.version }}
+        client-payload: '{"version": "${{ steps.compareVersions.outputs.version }}"}'
         
-    - name: Delete workflow runs
+    - name: 删除旧的 workflow
       uses: Mattraks/delete-workflow-runs@v2
       with:
         token: ${{ secrets.ACCESS_TOKEN }}
