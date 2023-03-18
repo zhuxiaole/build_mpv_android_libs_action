@@ -1,4 +1,4 @@
-name: Manual Build
+name: 手动编译
 
 env:
   TZ: Asia/Shanghai

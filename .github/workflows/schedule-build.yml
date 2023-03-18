@@ -1,4 +1,4 @@
-name: Schedule Build
+name: 自动编译
 
 env:
   TZ: Asia/Shanghai

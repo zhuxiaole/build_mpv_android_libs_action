@@ -1,4 +1,4 @@
-name: Build mpv-android libs
+name: 编译 mpv-android libs
 
 on:
   repository_dispatch:
@@ -26,7 +26,7 @@ jobs:
     - name: 配置缓存
       uses: actions/cache@v3
       with:
-        path: /gh-cache/
+        path: gh-cache/
         key: "prefix"
         enableCrossOsArchive: true
 
@@ -34,11 +34,8 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install autoconf pkg-config libtool ninja-build meson
-        mkdir /work
-        sudo chmod -R 777 /work
       
     - name: 下载mpv-android源码
-      working-directory: /work
       run: |
         df -hT $PWD
         git clone https://github.com/mpv-android/mpv-android.git -b ${{matrix.version}} mpv-android
@@ -46,15 +43,15 @@ jobs:
     - name: 下载依赖
       run: |
         mkdir -p "$CACHE_FOLDER"
-        /work/mpv-android/buildscripts/.travis.sh install
+        mpv-android/buildscripts/.travis.sh install
       env:
         CACHE_MODE: "folder"
-        CACHE_FOLDER: "/work/gh-cache"
+        CACHE_FOLDER: "${{ github.workspace }}/gh-cache"
 
     - name: 编译
       id: compile
       run: |
-        /work/mpv-android/buildscripts/.travis.sh build
+        mpv-android/buildscripts/.travis.sh build
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: SSH 连接
@@ -67,8 +64,8 @@ jobs:
       id: organize
       if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
-        mkdir /work/uploads
-        cd /work/mpv-android/app/build/outputs
+        mkdir uploads
+        cd mpv-android/app/build/outputs
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: 生成 release tag
@@ -79,8 +76,8 @@ jobs:
         release_name="${{matrix.version}} libs"
         echo "release_tag=${release_tag}" >> $GITHUB_OUTPUT
         echo "release_name=${release_name}" >> $GITHUB_OUTPUT
-        touch /work/release.txt
-        echo "mpv-android libs version ${{matrix.version}}" >> /work/release.txt
+        touch release.txt
+        echo "mpv-android libs version ${{matrix.version}}" >> release.txt
         echo "status=success" >> $GITHUB_OUTPUT
         
     - name: 删除相同 tag 的 releases
@@ -101,8 +98,8 @@ jobs:
       with:
         name: ${{ steps.tag.outputs.release_name }}
         tag_name: ${{ steps.tag.outputs.release_tag }}
-        body_path: /work/release.txt
-        files: /work/uploads/*
+        body_path: release.txt
+        files: uploads/*
 
     - name: 删除旧的 workflows
       uses: Mattraks/delete-workflow-runs@v2
