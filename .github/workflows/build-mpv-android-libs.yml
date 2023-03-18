@@ -42,16 +42,12 @@ jobs:
 
     - name: 下载依赖
       run: |
-        mkdir -p "$CACHE_FOLDER"
-        mpv-android/buildscripts/.travis.sh install
-      env:
-        CACHE_MODE: "folder"
-        CACHE_FOLDER: "${{ github.workspace }}/gh-cache"
+        mpv-android/buildscripts/download.sh
 
     - name: 编译
       id: compile
       run: |
-        mpv-android/buildscripts/.travis.sh build
+        mpv-android/buildscripts/buildall.sh
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: SSH 连接
