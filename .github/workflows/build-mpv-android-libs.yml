@@ -1,0 +1,121 @@
+name: Build Openwrt
+
+on:
+  repository_dispatch:
+
+env:
+  TZ: Asia/Shanghai
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    name: 编译 mpv-android libs ${{matrix.version}}
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ["${{ github.event.client_payload.version }}"]
+
+    steps:
+    - name: 配置java
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: temurin
+
+    - name: 配置缓存
+      uses: actions/cache@v3
+      with:
+        path: /gh-cache/
+        key: "prefix"
+        enableCrossOsArchive: true
+
+    - name: 初始化环境
+      run: |
+        sudo apt-get update
+        sudo apt-get install autoconf pkg-config libtool ninja-build meson
+      
+    - name: 下载mpv-android源码
+      working-directory: /
+      run: |
+        df -hT $PWD
+        git clone https://github.com/mpv-android/mpv-android.git -b ${{matrix.version}} mpv-android
+
+    - name: 下载依赖
+      run: |
+        mkdir -p "$CACHE_FOLDER"
+        /mpv-android/buildscripts/.travis.sh install
+      env:
+        CACHE_MODE: "folder"
+        CACHE_FOLDER: "/gh-cache"
+
+    - name: 编译
+      id: compile
+      if: !cancelled()
+      run: |
+        /mpv-android/buildscripts/.travis.sh build
+        echo "::set-output name=status::success"
+
+    - name: SSH 连接
+      uses: P3TERX/ssh2actions@v1.0.0
+      env:
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+
+    - name: 组织文件
+      id: organize
+      if: steps.compile.outputs.status == 'success' && !cancelled()
+      run: |
+        mkdir /uploads
+        cd /mpv-android/app/build/outputs
+        echo "::set-output name=status::success"
+
+    - name: 生成 release tag
+      id: tag
+      if: steps.organize.outputs.status == 'success' && !cancelled()
+      run: |
+        release_tag="${{matrix.version}}"
+        release_name="${{matrix.version}} libs"
+        echo "::set-output name=release_tag::${release_tag}"
+        echo "::set-output name=release_name::${release_name}"
+        touch /release.txt
+        echo "mpv-android libs version ${{matrix.version}}" >> /release.txt
+        echo "::set-output name=status::success"
+        
+    - name: 删除相同 tag 的 releases
+      uses: dev-drprasad/delete-older-releases@v0.2.0
+      if: steps.tag.outputs.status == 'success' && !cancelled()
+      with:
+        keep_latest: 0
+        delete_tags: true
+        delete_tag_pattern: ${{ steps.tag.outputs.release_tag }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+
+    - name: 上传至 release
+      uses: softprops/action-gh-release@v1
+      if: steps.tag.outputs.status == 'success' && !cancelled()
+      env:
+        GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      with:
+        name: ${{ steps.tag.outputs.release_name }}
+        tag_name: ${{ steps.tag.outputs.release_tag }}
+        body_path: /release.txt
+        files: /uploads/*
+
+    - name: 删除旧的 workflows
+      uses: Mattraks/delete-workflow-runs@v2
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+        repository: ${{ github.repository }}
+        retain_days: 1
+        keep_minimum_runs: 4
+
+    - name: 删除旧的 releases
+      uses: dev-drprasad/delete-older-releases@v0.2.1
+      continue-on-error: true
+      with:
+        keep_latest: 20
+        delete_tags: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}

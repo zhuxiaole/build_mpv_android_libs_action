@@ -1,0 +1,42 @@
+name: Manual Build
+
+env:
+  TZ: Asia/Shanghai
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'mpv-android 版本'
+        required: true
+        default: 'mpv-android-2023-02-27'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    name: 手动编译 mpv-android libs ${{github.event.inputs.version}}
+
+    steps:
+    - name: 获取最新 tag
+      id: getTag
+      run: |
+        latestTag="$((curl -gs -H 'Content-Type: application/json' \
+          -H "Authorization: Bearer ${{ secrets.ACCESS_TOKEN }}" \
+          -X POST -d '{ "query": "query {repository(owner: \"mpv-android\", name: \"mpv-android\") {refs(refPrefix: \"refs/tags/\", last: 4, orderBy: {field: TAG_COMMIT_DATE, direction: ASC}) {edges {node {name}}}}}"}' https://api.github.com/graphql) | jq -r '.data.repository.refs.edges[].node.name' | tail -n 1)"
+        echo "::set-output name=latestTag::${latestTag}"
+        echo "最新tag: $latestTag"
+
+    - name: 触发编译
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+        event-type: 编译 mpv-android libs ${{ github.event.inputs.version }}
+        client-payload: '{"version": "${{ github.event.inputs.version }}"}'
+        
+    - name: 删除旧的 workflows
+      uses: Mattraks/delete-workflow-runs@v2
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+        repository: ${{ github.repository }}
+        retain_days: 1
+        keep_minimum_runs: 4

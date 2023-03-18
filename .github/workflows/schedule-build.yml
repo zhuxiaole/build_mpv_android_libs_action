@@ -1,0 +1,42 @@
+name: Schedule Build
+
+env:
+  TZ: Asia/Shanghai
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 0 */24 * * *
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    name: Schedule Build
+
+    steps:
+    - name: Get latest tag
+      id: getTag
+      run: |
+        latestTag="$((curl -gs -H 'Content-Type: application/json' \
+          -H "Authorization: Bearer ${{ secrets.ACCESS_TOKEN }}" \
+          -X POST -d '{ "query": "query {repository(owner: \"x-wrt\", name: \"x-wrt\") {refs(refPrefix: \"refs/tags/\", last: 4, orderBy: {field: TAG_COMMIT_DATE, direction: ASC}) {edges {node {name}}}}}"}' https://api.github.com/graphql) | jq -r '.data.repository.refs.edges[].node.name' | grep '22.' | tail -n 1)"
+        latestTag="22.03"
+        echo "::set-output name=latestTag::${latestTag}"
+        echo "::set-output name=success::true"
+        echo "latestTag: $latestTag"
+
+    - name: Trigger x86_64 build
+      if: steps.getTag.outputs.success == 'true'
+      uses: peter-evans/repository-dispatch@v2
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+        event-type: Lienol-Openwrt x86_64 ${{steps.getTag.outputs.latestTag}}
+        client-payload: '{"manufacturer": "Lienol-Openwrt", "branch": "${{ steps.getTag.outputs.latestTag }}", "target": "x86_64"}'
+        
+    - name: Delete workflow runs
+      uses: Mattraks/delete-workflow-runs@v2
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+        repository: ${{ github.repository }}
+        retain_days: 1
+        keep_minimum_runs: 4
