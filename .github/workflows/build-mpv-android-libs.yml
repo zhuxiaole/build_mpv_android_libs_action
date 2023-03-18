@@ -34,9 +34,11 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install autoconf pkg-config libtool ninja-build meson
+        mkdir /work
+        sudo chmod -R 777 /work
       
     - name: 下载mpv-android源码
-      working-directory: /
+      working-directory: /work
       run: |
         df -hT $PWD
         git clone https://github.com/mpv-android/mpv-android.git -b ${{matrix.version}} mpv-android
@@ -44,15 +46,15 @@ jobs:
     - name: 下载依赖
       run: |
         mkdir -p "$CACHE_FOLDER"
-        /mpv-android/buildscripts/.travis.sh install
+        /work/mpv-android/buildscripts/.travis.sh install
       env:
         CACHE_MODE: "folder"
-        CACHE_FOLDER: "/gh-cache"
+        CACHE_FOLDER: "/work/gh-cache"
 
     - name: 编译
       id: compile
       run: |
-        /mpv-android/buildscripts/.travis.sh build
+        /work/mpv-android/buildscripts/.travis.sh build
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: SSH 连接
@@ -65,8 +67,8 @@ jobs:
       id: organize
       if: steps.compile.outputs.status == 'success' && !cancelled()
       run: |
-        mkdir /uploads
-        cd /mpv-android/app/build/outputs
+        mkdir /work/uploads
+        cd /work/mpv-android/app/build/outputs
         echo "status=success" >> $GITHUB_OUTPUT
 
     - name: 生成 release tag
@@ -77,8 +79,8 @@ jobs:
         release_name="${{matrix.version}} libs"
         echo "release_tag=${release_tag}" >> $GITHUB_OUTPUT
         echo "release_name=${release_name}" >> $GITHUB_OUTPUT
-        touch /release.txt
-        echo "mpv-android libs version ${{matrix.version}}" >> /release.txt
+        touch /work/release.txt
+        echo "mpv-android libs version ${{matrix.version}}" >> /work/release.txt
         echo "status=success" >> $GITHUB_OUTPUT
         
     - name: 删除相同 tag 的 releases
@@ -99,8 +101,8 @@ jobs:
       with:
         name: ${{ steps.tag.outputs.release_name }}
         tag_name: ${{ steps.tag.outputs.release_tag }}
-        body_path: /release.txt
-        files: /uploads/*
+        body_path: /work/release.txt
+        files: /work/uploads/*
 
     - name: 删除旧的 workflows
       uses: Mattraks/delete-workflow-runs@v2
