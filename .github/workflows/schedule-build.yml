@@ -23,7 +23,7 @@ jobs:
         my_version="$((curl -gs -H 'Content-Type: application/json' \
           -H "Authorization: Bearer ${{ secrets.ACCESS_TOKEN }}" \
           -X POST -d '{ "query": "query {repository(owner: \"zhuxiaole\", name: \"build_mpv_android_libs_action\") {refs(refPrefix: \"refs/tags/\", last: 4, orderBy: {field: TAG_COMMIT_DATE, direction: ASC}) {edges {node {name}}}}}"}' https://api.github.com/graphql) | jq -r '.data.repository.refs.edges[].node.name' | tail -n 1)"
-        update=${{ "$mpv_version" != "$my_version" }}
+        update=${{ "${mpv_version}" != "${my_version}" }}
         echo "version=${mpv_version}" >> $GITHUB_OUTPUT
         echo "update=${update}" >> $GITHUB_OUTPUT
         echo "是否更新: $update | 最新版本: $mpv_version"
