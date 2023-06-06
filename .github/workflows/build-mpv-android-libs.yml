@@ -26,7 +26,9 @@ jobs:
     - name: 初始化环境
       run: |
         sudo apt update
-        sudo apt install -y autoconf pkg-config libtool ninja-build meson nasm zip
+        sudo apt install -y autoconf pkg-config libtool ninja-build python3-pip nasm zip
+        sudo pip3 install --upgrade pip
+        sudo pip3 install meson
       
     - name: 下载mpv-android源码
       run: |
