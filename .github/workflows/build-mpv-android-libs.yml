@@ -8,7 +8,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-23.10
+    runs-on: ubuntu-latest
 
     name: 编译 mpv-android libs ${{matrix.version}}
     strategy:
