@@ -8,7 +8,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-23.10
 
     name: 编译 mpv-android libs ${{matrix.version}}
     strategy:
@@ -25,8 +25,8 @@ jobs:
 
     - name: 初始化环境
       run: |
-        sudo apt-get update
-        sudo apt-get install autoconf pkg-config libtool ninja-build meson nasm zip
+        sudo apt update
+        sudo apt install -y autoconf pkg-config libtool ninja-build meson nasm zip
       
     - name: 下载mpv-android源码
       run: |
