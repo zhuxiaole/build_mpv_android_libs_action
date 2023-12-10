@@ -43,7 +43,7 @@ jobs:
       - name: 配置编译内存
         run: |
           mkdir ~/.gradle
-          echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxPermSize=1024m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" >~/.gradle/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx2048m" >~/.gradle/gradle.properties
 
       - name: 编译
         id: compile
