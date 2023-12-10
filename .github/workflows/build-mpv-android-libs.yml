@@ -34,6 +34,9 @@ jobs:
           sudo apt install -y autoconf pkg-config libtool ninja-build python3-pip nasm zip
           sudo pip3 install --upgrade pip
           sudo pip3 install meson
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          sudo timedatectl set-timezone "Asia/Shanghai"
 
       - name: 下载mpv-android源码
         run: |
