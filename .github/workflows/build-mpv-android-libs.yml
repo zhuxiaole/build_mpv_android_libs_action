@@ -39,7 +39,6 @@ jobs:
         run: |
           cd mpv-android/buildscripts
           ./download.sh
-          echo "\norg.gradle.jvmargs=-Xmx2048m -XX:MaxPermSize=1024m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" >> mpv-android/gradle.properties
 
       - name: 配置编译内存
         run: |
