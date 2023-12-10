@@ -12,39 +12,39 @@ jobs:
   check:
     runs-on: ubuntu-latest
     name: 自动编译
-
     steps:
-    - name: 检查是否需要更新
-      id: compareVersions
-      run: |
-        mpv_version="$((curl -gs -H 'Content-Type: application/json' \
-          -H "Authorization: Bearer ${{ secrets.ACCESS_TOKEN }}" \
-          -X POST -d '{ "query": "query {repository(owner: \"mpv-android\", name: \"mpv-android\") {refs(refPrefix: \"refs/tags/\", last: 4, orderBy: {field: TAG_COMMIT_DATE, direction: ASC}) {edges {node {name}}}}}"}' https://api.github.com/graphql) | jq -r '.data.repository.refs.edges[].node.name' | tail -n 1)"
-        my_version="$((curl -gs -H 'Content-Type: application/json' \
-          -H "Authorization: Bearer ${{ secrets.ACCESS_TOKEN }}" \
-          -X POST -d '{ "query": "query {repository(owner: \"zhuxiaole\", name: \"build_mpv_android_libs_action\") {refs(refPrefix: \"refs/tags/\", last: 4, orderBy: {field: TAG_COMMIT_DATE, direction: ASC}) {edges {node {name}}}}}"}' https://api.github.com/graphql) | jq -r '.data.repository.refs.edges[].node.name' | tail -n 1)"
-        if [ $mpv_version == $my_version ]
-        then
-          update='false'
-        else
-          update='true'
-        fi
-        echo "version=${mpv_version}" >> $GITHUB_OUTPUT
-        echo "update=${update}" >> $GITHUB_OUTPUT
-        echo "是否更新: $update | 最新版本: $mpv_version"
+      - name: 检查是否需要更新
+        id: compareVersions
+        run: |
+          mpv_version="$((curl -L \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.ACCESS_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/mpv-android/mpv-android/releases/latest) \
+            | jq -r '.tag_name')"
+          my_version="$(curl -L https://raw.githubusercontent.com/${{ github.repository }}/main/lastversion.txt)"
+          if [ $mpv_version == $my_version ]
+          then
+            update='false'
+          else
+            update='true'
+          fi
+          echo "version=${mpv_version}" >> $GITHUB_OUTPUT
+          echo "update=${update}" >> $GITHUB_OUTPUT
+          echo "是否更新: $update | 最新版本: $mpv_version"
 
-    - name: 触发编译
-      if: steps.compareVersions.outputs.update == 'true'
-      uses: peter-evans/repository-dispatch@v2
-      with:
-        token: ${{ secrets.ACCESS_TOKEN }}
-        event-type: 自动编译 mpv-android libs ${{ steps.compareVersions.outputs.version }}
-        client-payload: '{"version": "${{ steps.compareVersions.outputs.version }}"}'
-        
-    - name: 删除旧的 workflow
-      uses: Mattraks/delete-workflow-runs@v2
-      with:
-        token: ${{ secrets.ACCESS_TOKEN }}
-        repository: ${{ github.repository }}
-        retain_days: 1
-        keep_minimum_runs: 4
+      - name: 触发编译
+        if: steps.compareVersions.outputs.update == 'true'
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.ACCESS_TOKEN }}
+          event-type: 自动编译 mpv-android libs ${{ steps.compareVersions.outputs.version }}
+          client-payload: '{"version": "${{ steps.compareVersions.outputs.version }}"}'
+
+      - name: 删除旧的 workflow
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ secrets.ACCESS_TOKEN }}
+          repository: ${{ github.repository }}
+          retain_days: 1
+          keep_minimum_runs: 4

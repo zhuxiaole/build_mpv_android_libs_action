@@ -17,98 +17,121 @@ jobs:
         version: ["${{ github.event.client_payload.version }}"]
 
     steps:
-    - name: 配置java
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: temurin
+      - name: 配置java
+        uses: actions/setup-java@v3
+        with:
+          java-version: "17"
+          distribution: temurin
 
-    - name: 初始化环境
-      run: |
-        sudo apt update
-        sudo apt install -y autoconf pkg-config libtool ninja-build python3-pip nasm zip
-        sudo pip3 install --upgrade pip
-        sudo pip3 install meson
-      
-    - name: 下载mpv-android源码
-      run: |
-        df -hT $PWD
-        git clone https://github.com/mpv-android/mpv-android.git -b ${{matrix.version}} mpv-android
+      - name: 初始化环境
+        run: |
+          sudo apt update
+          sudo apt install -y autoconf pkg-config libtool ninja-build python3-pip nasm zip
+          sudo pip3 install --upgrade pip
+          sudo pip3 install meson
 
-    - name: 下载依赖
-      run: |
-        cd mpv-android/buildscripts
-        ./download.sh
+      - name: 下载mpv-android源码
+        run: |
+          df -hT $PWD
+          git clone https://github.com/mpv-android/mpv-android.git -b ${{matrix.version}} mpv-android
 
-    - name: 编译
-      id: compile
-      run: |
-        cd mpv-android/buildscripts
-        ./buildall.sh --arch armv7l mpv
-        ./buildall.sh --arch arm64 mpv
-        ./buildall.sh --arch x86 mpv
-        ./buildall.sh --arch x86_64 mpv
-        ./buildall.sh
-        echo "status=success" >> $GITHUB_OUTPUT
+      - name: 下载依赖
+        run: |
+          cd mpv-android/buildscripts
+          ./download.sh
 
-    - name: 组织文件
-      id: organize
-      if: steps.compile.outputs.status == 'success' && !cancelled()
-      run: |
-        mkdir uploads
-        cd mpv-android/app/build/intermediates/merged_jni_libs/defaultRelease/out
-        zip -r -v ${{ github.workspace }}/uploads/arm64-v8a.zip arm64-v8a
-        zip -r -v ${{ github.workspace }}/uploads/armeabi-v7a.zip armeabi-v7a
-        zip -r -v ${{ github.workspace }}/uploads/x86.zip x86
-        zip -r -v ${{ github.workspace }}/uploads/x86_64.zip x86_64
-        echo "status=success" >> $GITHUB_OUTPUT
+      - name: 编译
+        id: compile
+        run: |
+          cd mpv-android/buildscripts
+          ./buildall.sh --arch armv7l mpv
+          ./buildall.sh --arch arm64 mpv
+          ./buildall.sh --arch x86 mpv
+          ./buildall.sh --arch x86_64 mpv
+          ./buildall.sh
+          echo "status=success" >> $GITHUB_OUTPUT
 
-    - name: 生成 release tag
-      id: tag
-      if: steps.organize.outputs.status == 'success' && !cancelled()
-      run: |
-        release_tag="${{matrix.version}}"
-        release_name="${{matrix.version}} libs"
-        echo "release_tag=${release_tag}" >> $GITHUB_OUTPUT
-        echo "release_name=${release_name}" >> $GITHUB_OUTPUT
-        touch release.txt
-        echo "mpv-android libs version ${{matrix.version}}" >> release.txt
-        echo "status=success" >> $GITHUB_OUTPUT
-        
-    - name: 删除相同 tag 的 releases
-      uses: dev-drprasad/delete-older-releases@v0.2.0
-      if: steps.tag.outputs.status == 'success' && !cancelled()
-      with:
-        keep_latest: 0
-        delete_tags: true
-        delete_tag_pattern: ${{ steps.tag.outputs.release_tag }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      - name: 组织文件
+        id: organize
+        if: steps.compile.outputs.status == 'success' && !cancelled()
+        run: |
+          mkdir uploads
+          cd mpv-android/app/build/intermediates/merged_jni_libs/defaultRelease/out
+          zip -r -v ${{ github.workspace }}/uploads/arm64-v8a.zip arm64-v8a
+          zip -r -v ${{ github.workspace }}/uploads/armeabi-v7a.zip armeabi-v7a
+          zip -r -v ${{ github.workspace }}/uploads/x86.zip x86
+          zip -r -v ${{ github.workspace }}/uploads/x86_64.zip x86_64
+          echo "status=success" >> $GITHUB_OUTPUT
 
-    - name: 上传至 release
-      uses: softprops/action-gh-release@v1
-      if: steps.tag.outputs.status == 'success' && !cancelled()
-      env:
-        GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-      with:
-        name: ${{ steps.tag.outputs.release_name }}
-        tag_name: ${{ steps.tag.outputs.release_tag }}
-        body_path: release.txt
-        files: uploads/*
+      - name: 记录编译的版本
+        if: steps.organize.outputs.status == 'success' && !cancelled()
+        id: commit
+        run: |
+          VERSION=${{matrix.version}}
+          echo ${VERSION} > lastversion.txt
+          if git status --porcelain | grep lastversion.txt; then
+            git add lastversion.txt
+            git commit -m "${VERSION}"
+            echo "push=true" >> $GITHUB_OUTPUT
+          else
+            echo "nothing to commit"
+          fi
 
-    - name: 删除旧的 workflows
-      uses: Mattraks/delete-workflow-runs@v2
-      with:
-        token: ${{ secrets.ACCESS_TOKEN }}
-        repository: ${{ github.repository }}
-        retain_days: 1
-        keep_minimum_runs: 4
+      - name: 提交修改
+        id: push
+        if: steps.commit.outputs.push == 'true' && !cancelled()
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.ACCESS_TOKEN }}
+          repository: ${{ github.repository }}
+          branch: main
 
-    - name: 删除旧的 releases
-      uses: dev-drprasad/delete-older-releases@v0.2.1
-      continue-on-error: true
-      with:
-        keep_latest: 20
-        delete_tags: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      - name: 生成 release tag
+        id: tag
+        if: steps.commit.outputs.push == 'true' && !cancelled()
+        run: |
+          release_tag="${{matrix.version}}"
+          release_name="${{matrix.version}} libs"
+          echo "release_tag=${release_tag}" >> $GITHUB_OUTPUT
+          echo "release_name=${release_name}" >> $GITHUB_OUTPUT
+          touch release.txt
+          echo "mpv-android libs version ${{matrix.version}}" >> release.txt
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: 删除相同 tag 的 releases
+        uses: dev-drprasad/delete-older-releases@v0.2.0
+        if: steps.tag.outputs.status == 'success' && !cancelled()
+        with:
+          keep_latest: 0
+          delete_tags: true
+          delete_tag_pattern: ${{ steps.tag.outputs.release_tag }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+
+      - name: 上传至 release
+        uses: softprops/action-gh-release@v1
+        if: steps.tag.outputs.status == 'success' && !cancelled()
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        with:
+          name: ${{ steps.tag.outputs.release_name }}
+          tag_name: ${{ steps.tag.outputs.release_tag }}
+          body_path: release.txt
+          files: uploads/*
+
+      - name: 删除旧的 workflows
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ secrets.ACCESS_TOKEN }}
+          repository: ${{ github.repository }}
+          retain_days: 1
+          keep_minimum_runs: 4
+
+      - name: 删除旧的 releases
+        uses: dev-drprasad/delete-older-releases@v0.2.1
+        continue-on-error: true
+        with:
+          keep_latest: 20
+          delete_tags: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
