@@ -34,12 +34,12 @@ jobs:
         run: |
           df -hT $PWD
           git clone https://github.com/mpv-android/mpv-android.git -b ${{matrix.version}} mpv-android
-          echo "\norg.gradle.jvmargs=-Xmx2048m -XX:MaxPermSize=1024m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" >> mpv-android/gradle.properties
 
       - name: 下载依赖
         run: |
           cd mpv-android/buildscripts
           ./download.sh
+          echo "\norg.gradle.jvmargs=-Xmx2048m -XX:MaxPermSize=1024m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" >> mpv-android/gradle.properties
 
       - name: 编译
         id: compile
