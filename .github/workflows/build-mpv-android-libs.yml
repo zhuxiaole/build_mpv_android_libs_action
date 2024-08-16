@@ -64,15 +64,12 @@ jobs:
           ./buildall.sh
           echo "status=success" >> $GITHUB_OUTPUT
 
-      - name: SSH connection to Actions
-        uses: P3TERX/ssh2actions@v1.0.0
-
       - name: 组织文件
         id: organize
         if: steps.compile.outputs.status == 'success' && !cancelled()
         run: |
           mkdir uploads
-          cd mpv-android/app/build/intermediates/merged_jni_libs/defaultRelease/out
+          cd mpv-android/app/build/intermediates/merged_jni_libs/defaultRelease/mergeDefaultReleaseJniLibFolders/out
           zip -r -v ${{ github.workspace }}/uploads/arm64-v8a.zip arm64-v8a
           zip -r -v ${{ github.workspace }}/uploads/armeabi-v7a.zip armeabi-v7a
           zip -r -v ${{ github.workspace }}/uploads/x86.zip x86
