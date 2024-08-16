@@ -64,6 +64,9 @@ jobs:
           ./buildall.sh
           echo "status=success" >> $GITHUB_OUTPUT
 
+      - name: SSH connection to Actions
+        uses: P3TERX/ssh2actions@v1.0.0
+
       - name: 组织文件
         id: organize
         if: steps.compile.outputs.status == 'success' && !cancelled()
